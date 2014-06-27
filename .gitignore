@@ -14,3 +14,7 @@
 /lib/nblibraries.properties
 /nbproject/
 *.mf
+/bin/
+/.project
+/.classpath
+/.settings/
