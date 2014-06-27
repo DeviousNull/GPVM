@@ -130,18 +130,21 @@ public class RegisteredObject implements Iterable<RegisteredObject>{
    * the first available slot in this object and can be index by the id returned
    * by this method.
    * 
+   * @param <T> The return type for this method.
    * @param child The child to add.
+   * @return A reference to the input {@link RegisteredObject} or null if the child
+   * could not be added.
    * @throws NullPointerException Thrown if the child is null.
    */
-  public void addChild(RegisteredObject child) {
-    if(child == null) throw new NullPointerException();
+  public <T extends RegisteredObject> T addChild(RegisteredObject child) {
+    if(child == null) return null;
     
     //check to make sure that this child does not already have a parent. kidnapping is
     //not allowed
     if(child.getParent() != null) {
       log.log(Level.WARNING, EXISTING_PARENT, new Object[]{getFullName(), child.name});
       
-      return;
+      return null;
     }
     
     if(children == null) {
@@ -149,10 +152,10 @@ public class RegisteredObject implements Iterable<RegisteredObject>{
       children.put(child.name, child);
     } else {
       //make sure that the child is not already added.  No cloning either.
-      if(children.containsKey(child.name)) {
+      if(children.get(child.name) != null) {
         log.log(Level.WARNING, ALREADY_ADDED, new Object[]{getFullName(), child.name});
         
-        return;
+        return null;
       }
       
       children.put(child.name, child);
@@ -163,6 +166,8 @@ public class RegisteredObject implements Iterable<RegisteredObject>{
     
     //now notify the listeners
     fireChildAdded(child);
+    
+    return (T) child;
   }
   
   /**
@@ -179,7 +184,8 @@ public class RegisteredObject implements Iterable<RegisteredObject>{
     boolean result = children.containsKey(child.name);
     
     if(result) {
-      children.put(child.name, null);
+      if(child == children.put(child.name, null))
+        child.parent = null;
 
       fireChildRemoved(child);
     }
@@ -214,10 +220,11 @@ public class RegisteredObject implements Iterable<RegisteredObject>{
    * parent and so on until it reaches the root. An empty {@link String} will
    * return this {@link RegisteredObject}.
    * 
+   * @param <T> The type of {@link RegisteredObject} to return.
    * @param name The name of the {@link RegisteredObject} to retrieve.
    * @return The object with the given name or null if no object can be found.
    */
-  public RegisteredObject getObject(String name) {
+  public <T extends RegisteredObject> T getObject(String name) {
     StringTokenizer token = new StringTokenizer(name, 
       new String(new char[] {SEPARATOR}),
       false);
@@ -242,17 +249,18 @@ public class RegisteredObject implements Iterable<RegisteredObject>{
    * and so on in this fashion.  An empty array will simply return this
    * {@link RegisteredObject}.
    * 
+   * @param <T> The type of the {@link RegisteredObject} to return.
    * @param path A array of names for the path to the desired object.
    * @return 
    */
-  public RegisteredObject getObject(String[] path) {
-    if(path.length == 0) return this;
+  public <T extends RegisteredObject> T getObject(String[] path) {
+    if(path.length == 0) return (T) this;
     
-    RegisteredObject obj =  getObject(path, 0);
+    T obj =  (T) getObject(path, 0);
     
     if(obj != null) return obj;
     else if(parent != null) return parent.getObject(path);
-    else if(path[0].equals(name)) return getObject(path, 1);
+    else if(path[0].equals(name)) return (T) getObject(path, 1);
     else return null;
   }
   
@@ -373,6 +381,10 @@ public class RegisteredObject implements Iterable<RegisteredObject>{
       //nothing was found.
       return null;
     }
+  }
+  
+  public String toString() {
+    return getFullName();
   }
 
   /**

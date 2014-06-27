@@ -13,7 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import taiga.code.registration.RegisteredObject;
-import taiga.gpvm.registry.RenderingRegistry;
+import taiga.gpvm.registry.TileRenderingRegistry;
 
 /**
  * A renderer for a {@link Region} in the {@link GameMap}.
@@ -39,14 +39,14 @@ public final class RegionRenderer extends RegisteredObject implements RegionList
   public RegionRenderer(Region target) {
     super(NAME_PREFIX + target.getLocation());
     
-    reg = target;
-    reg.addListener(this);
-    dirty = true;
-    
     entries = new HashMap<>();
     rendindex = new HashMap<>();
     instances = new ConcurrentHashMap<>();
     dirtyents = new HashMap<>();
+    
+    reg = target;
+    reg.addListener(this);
+    dirty = true;
   }
   
   /**
@@ -58,7 +58,7 @@ public final class RegionRenderer extends RegisteredObject implements RegionList
     entries.clear();
     rendindex.clear();
     
-    //construct the various tile infos.
+    //construct the various entity infos.
     for(byte i = 0; i < Region.REGION_SIZE; i++) {
       for(byte j = 0; j < Region.REGION_SIZE; j++) {
         for(byte k = 0; k < Region.REGION_SIZE; k++) {
@@ -71,7 +71,7 @@ public final class RegionRenderer extends RegisteredObject implements RegionList
   }
   
   /**
-   * Update the rendering information for a single tile in the {@link Region}.
+   * Update the rendering information for a single entity in the {@link Region}.
    * 
    * @param coor The {@link Coordinate} or the {@link Tile} to update.
    */
@@ -82,37 +82,36 @@ public final class RegionRenderer extends RegisteredObject implements RegionList
   }
   
   /**
-   * Updates rendering information for a single tile in the {@link Region}.
+   * Updates rendering information for a single entity in the {@link Region}.
    * 
    * @param x The x coordinate of the {@link Tile} in the {@link Region}.
    * @param y The y coordinate of the {@link Tile} in the {@link Region}.
    * @param z The z coordinate of the {@link Tile} in the {@link Region}.
    */
   public void updateTile(int x, int y, int z) {
-    RenderingRegistry rendreg = (RenderingRegistry) getObject(HardcodedValues.RENDERING_REGISTRY_NAME);
+    TileRenderingRegistry rendreg = (TileRenderingRegistry) getObject(HardcodedValues.TILE_RENDERING_REGISTRY_NAME);
     
-    //first check to see if the tile needs rendering
+    //first check to see if the entity needs rendering
     Tile tar = reg.getTile(x, y, z);
     if(tar == null || tar.type == null) return;
     
-    //now check if the tile is actually visible
+    //now check if the entity is actually visible
     Coordinate loc = new Coordinate(x, y, z);
     Tile[] ngbrs = reg.getWorld().getNeighborTiles(loc);
     boolean visible = false;
-    for(int i = 0; i < ngbrs.length; i++) {
-      if(ngbrs[i] == null || ngbrs[i].type == null) {
+    for (Tile ngbr : ngbrs) {
+      if (ngbr == null || ngbr.type == null) {
         visible = true;
         break;
       }
-      
-      if(!ngbrs[i].type.opaque) {
+      if (!ngbr.type.opaque) {
         visible = true;
         break;
       }
     }
     if(!visible) return;
     
-    //The tile can be rendered and is visible, now collect information on the tile.
+    //The entity can be rendered and is visible, now collect information on the entity.
     TileInfo info = new TileInfo();
     info.adjacent = ngbrs;
     info.tile = tar;
@@ -211,7 +210,7 @@ public final class RegionRenderer extends RegisteredObject implements RegionList
 
   protected void render(int pass) {    
     for(Renderer rend : instances.values())
-      rend.render();
+      rend.render(pass);
   }
   
   private boolean dirty;

@@ -6,17 +6,22 @@
 
 package taiga.gpvm;
 
+import taiga.code.input.InputSystem;
 import taiga.code.opengl.GraphicsSystem;
 import taiga.code.util.SettingManager;
+import taiga.gpvm.entity.EntityManager;
 import taiga.gpvm.event.MapEventManager;
 import taiga.gpvm.map.MapGenerator;
 import taiga.gpvm.map.RegionManager;
 import taiga.gpvm.map.Universe;
+import taiga.gpvm.registry.EntityRegistry;
+import taiga.gpvm.registry.EntityRenderingRegistry;
 import taiga.gpvm.schedule.WorldUpdater;
-import taiga.gpvm.registry.RenderingRegistry;
+import taiga.gpvm.registry.TileRenderingRegistry;
 import taiga.gpvm.registry.TileRegistry;
 import taiga.gpvm.render.ColorRenderer;
 import taiga.gpvm.render.Renderer;
+import taiga.gpvm.render.SkyBoxRenderer;
 import taiga.gpvm.screens.GameScreen;
 
 /**
@@ -30,8 +35,46 @@ public class HardcodedValues {
    */
   public static final String NAMESPACE_SEPERATOR = ".";
   
+  //graphics layer numbers
+  //<editor-fold>
+  /**
+   * The number of layers for rendering.  These will not necessarily be layers in
+   * a geometrical sense, e.g. transparencies will have there own layer be will be mixed
+   * in spatially with opaque objects.
+   */
+  public static final int NUM_GRAPHICS_LAYERS = 3;
+  /**
+   * The layer for rendering backgrounds.
+   */
+  public static final int SKY_LAYER = 0;
+  /**
+   * The layer for rendering opaque objects in the world.
+   */
+  public static final int OPAQUE_WORLD_LAYER = 2;
+  //</editor-fold>
+  
   //internal system names
   //<editor-fold>
+  /**
+   * The name for the {@link EntityRenderingRegistry}.
+   */
+  public static final String ENTITY_RENDERING_REGISTRY_NAME = "entity-rendering-registry";
+  /**
+   * The name for the {@link EntityRegistry}.
+   */
+  public static final String ENTITY_REGISTRY_NAME = "entity-registry";
+  /**
+   * The name for the {@link EntityManager}s.
+   */
+  public static final String ENTITY_MANAGER_NAME = "entities";
+  /**
+   * The name for the {@link SkyBoxRenderer}.
+   */
+  public static final String SKY_REGISTRY_NAME = "skies";
+  /**
+   * The name for the {@link InputSystem}.
+   */
+  public static final String INPUT_SYSTEM_NAME = "input";
   /**
    * The name for the {@link SettingManager}.  This is the same as {@link SettingManager#SETTINGMANAGER_NAME}
    */
@@ -53,9 +96,9 @@ public class HardcodedValues {
    */
   public static final String TILE_REGISTRY_NAME = "tiles";
   /**
-   * Name for the {@link RenderingRegistry}.
+   * Name for the {@link TileRenderingRegistry}.
    */
-  public static final String RENDERING_REGISTRY_NAME = "rendering-info";
+  public static final String TILE_RENDERING_REGISTRY_NAME = "tile-renedering-registry";
   /**
    * Name for {@link MapGenerator}s.
    */
@@ -75,7 +118,7 @@ public class HardcodedValues {
   /**
    * Name for {@link WorldUpdater} networking.
    */
-  public static final String WORLD_COMMS_NAME = "comms";
+  public static final String COMMS_NAME = "comms";
   /**
    * Name for {@link MapEventManager}.
    */

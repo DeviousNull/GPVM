@@ -6,8 +6,6 @@
 
 package taiga.gpvm.screens;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.logging.Logger;
 import taiga.code.graphics.RenderableSwitcher;
 import taiga.gpvm.HardcodedValues;
@@ -31,7 +29,7 @@ public class GameScreen extends RenderableSwitcher implements UniverseListener, 
   public GameScreen() {
     super(HardcodedValues.GAME_SCREEN_NAME);
     
-    listchildren = new ArrayList<>();
+    setPasses(HardcodedValues.NUM_GRAPHICS_LAYERS);
   }
 
   @Override
@@ -47,20 +45,17 @@ public class GameScreen extends RenderableSwitcher implements UniverseListener, 
     WorldRenderer rend = new WorldRenderer(world);
     
     addChild(rend);
-    listchildren.add(rend);
   }
   
   @Override
   public void worldChanged(WorldChange change, Object prev) {
-    for(WorldChangeListener list : listchildren)
-      list.worldChanged(change, prev);
+    WorldRenderer world = getObject(change.world.name);
+    
+    if(world == null) return;
+    world.worldChanged(change, prev);
   }
   
-  private Collection<WorldChangeListener> listchildren;
-  
   private static final String locpref = GameScreen.class.getName().toLowerCase();
-  
-  private static final String NO_UNIVERSE = locpref + ".no_universe";
   
   private static final Logger log = Logger.getLogger(locpref, 
     System.getProperty("taiga.code.logging.text"));

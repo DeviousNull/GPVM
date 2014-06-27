@@ -13,7 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import taiga.gpvm.HardcodedValues;
+import taiga.gpvm.map.Tile;
 import taiga.gpvm.registry.RenderingInfo;
+import taiga.gpvm.util.geom.Direction;
 
 /**
  *
@@ -36,50 +39,68 @@ public class ColorRenderer implements Renderer {
       }
       
       //south face
-      vertices.add(corner);
-      vertices.add(corner.add(1, 0, 0, new Coordinate()));
-      vertices.add(corner.add(1, 0, 1, new Coordinate()));
-      vertices.add(corner.add(0, 0, 1, new Coordinate()));
-      colors.add(color);
+      Tile adj = info.adjacent[Direction.South.getIndex()];
+      if(adj == null || adj.type == null || !adj.type.opaque) {
+        vertices.add(corner);
+        vertices.add(corner.add(1, 0, 0, new Coordinate()));
+        vertices.add(corner.add(1, 0, 1, new Coordinate()));
+        vertices.add(corner.add(0, 0, 1, new Coordinate()));
+        colors.add(color);
+      }
       
       //north face
-      vertices.add(corner.add(0, 1, 0, new Coordinate()));
-      vertices.add(corner.add(1, 1, 0, new Coordinate()));
-      vertices.add(corner.add(1, 1, 1, new Coordinate()));
-      vertices.add(corner.add(0, 1, 1, new Coordinate()));
-      colors.add(color);
+      adj = info.adjacent[Direction.North.getIndex()];
+      if(adj == null || adj.type == null || !adj.type.opaque) {
+        vertices.add(corner.add(0, 1, 0, new Coordinate()));
+        vertices.add(corner.add(1, 1, 0, new Coordinate()));
+        vertices.add(corner.add(1, 1, 1, new Coordinate()));
+        vertices.add(corner.add(0, 1, 1, new Coordinate()));
+        colors.add(color);
+      }
       
       //west face
-      vertices.add(corner);
-      vertices.add(corner.add(0, 1, 0, new Coordinate()));
-      vertices.add(corner.add(0, 1, 1, new Coordinate()));
-      vertices.add(corner.add(0, 0, 1, new Coordinate()));
-      colors.add(color);
+      adj = info.adjacent[Direction.West.getIndex()];
+      if(adj == null || adj.type == null || !adj.type.opaque) {
+        vertices.add(corner);
+        vertices.add(corner.add(0, 1, 0, new Coordinate()));
+        vertices.add(corner.add(0, 1, 1, new Coordinate()));
+        vertices.add(corner.add(0, 0, 1, new Coordinate()));
+        colors.add(color);
+      }
       
       //east face
-      vertices.add(corner.add(1, 0, 0, new Coordinate()));
-      vertices.add(corner.add(1, 1, 0, new Coordinate()));
-      vertices.add(corner.add(1, 1, 1, new Coordinate()));
-      vertices.add(corner.add(1, 0, 1, new Coordinate()));
-      colors.add(color);
+      adj = info.adjacent[Direction.East.getIndex()];
+      if(adj == null || adj.type == null || !adj.type.opaque) {
+        vertices.add(corner.add(1, 0, 0, new Coordinate()));
+        vertices.add(corner.add(1, 1, 0, new Coordinate()));
+        vertices.add(corner.add(1, 1, 1, new Coordinate()));
+        vertices.add(corner.add(1, 0, 1, new Coordinate()));
+        colors.add(color);
+      }
       
       //bottom face
-      vertices.add(corner);
-      vertices.add(corner.add(1, 0, 0, new Coordinate()));
-      vertices.add(corner.add(1, 1, 0, new Coordinate()));
-      vertices.add(corner.add(0, 1, 0, new Coordinate()));
-      colors.add(color);
+      adj = info.adjacent[Direction.Down.getIndex()];
+      if(adj == null || adj.type == null || !adj.type.opaque) {
+        vertices.add(corner);
+        vertices.add(corner.add(1, 0, 0, new Coordinate()));
+        vertices.add(corner.add(1, 1, 0, new Coordinate()));
+        vertices.add(corner.add(0, 1, 0, new Coordinate()));
+        colors.add(color);
+      }
       
       //top face
-      vertices.add(corner.add(0, 0, 1, new Coordinate()));
-      vertices.add(corner.add(1, 0, 1, new Coordinate()));
-      vertices.add(corner.add(1, 1, 1, new Coordinate()));
-      vertices.add(corner.add(0, 1, 1, new Coordinate()));
-      colors.add(color);
+      adj = info.adjacent[Direction.Up.getIndex()];
+      if(adj == null || adj.type == null || !adj.type.opaque) {
+        vertices.add(corner.add(0, 0, 1, new Coordinate()));
+        vertices.add(corner.add(1, 0, 1, new Coordinate()));
+        vertices.add(corner.add(1, 1, 1, new Coordinate()));
+        vertices.add(corner.add(0, 1, 1, new Coordinate()));
+        colors.add(color);
+      }
     }
     
     verts = BufferUtils.createIntBuffer(3 * vertices.size());
-    color = BufferUtils.createByteBuffer(16 * colors.size());
+    color = BufferUtils.createByteBuffer(48 * colors.size());
     IntBuffer tcolor = color.asIntBuffer();
     
     for(Coordinate coor : vertices) {
@@ -100,13 +121,16 @@ public class ColorRenderer implements Renderer {
  }
 
   @Override
-  public void render() {
-    if(verts == null || color == null) return;
+  public void render(int pass) {
+    if(verts == null || 
+      color == null || 
+      pass != HardcodedValues.OPAQUE_WORLD_LAYER) return;
     
     GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
     GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
     
     GL11.glEnable(GL11.GL_DEPTH_TEST);
+    GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
     
     //There are 3 elements to each vertex
     //stride is zero the vertices are tightly packed.

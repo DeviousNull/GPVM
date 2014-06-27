@@ -266,17 +266,15 @@ public class WorldUpdater extends RegisteredSystem implements UniverseListener {
   private class WorldComms extends NetworkedObject {
 
     public WorldComms() {
-      super(HardcodedValues.WORLD_COMMS_NAME);
+      super(HardcodedValues.COMMS_NAME);
     }
 
     @Override
     protected void connected() {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     protected void messageRecieved(Packet pack) {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override

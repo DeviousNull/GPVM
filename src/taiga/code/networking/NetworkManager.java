@@ -43,6 +43,8 @@ public abstract class NetworkManager extends RegisteredObject {
     
     current = 0;
     history = new Packet[256];
+    index = new HashMap<>();
+    objects = new HashMap<>();
   }
   
   /**
@@ -56,8 +58,7 @@ public abstract class NetworkManager extends RegisteredObject {
    */
   public void scanRegisteredObjects() throws TimeoutException {
     ArrayList<NetworkedObject> rawobjs = new ArrayList<>();
-    objects = new HashMap<>();
-    index = new HashMap<>();
+    objects.clear();
     
     RegisteredObject root = this;
     while(root.getParent() != null)
@@ -80,6 +81,7 @@ public abstract class NetworkManager extends RegisteredObject {
       generateIDs();
     } else if(isConnected()) {
       syncIDs();
+      fireConnected();
     }
   }
   
@@ -96,7 +98,7 @@ public abstract class NetworkManager extends RegisteredObject {
       msg.number = current++;
     }
     
-    history[msg.number + 128] = msg;
+    history[msg.number] = msg;
     
     sendPacket(dest, msg);
   }
@@ -163,6 +165,11 @@ public abstract class NetworkManager extends RegisteredObject {
     
     NetworkedObject obj = index.get(pack.target);
     
+    if(obj == null) {
+      log.log(Level.SEVERE, UNKNOWN_PACKET_ID, pack.target);
+      return;
+    }
+    
     obj.messageRecieved(pack);
     
     //TODO: add packet resend code.
@@ -177,14 +184,9 @@ public abstract class NetworkManager extends RegisteredObject {
    */
   protected void connected() throws TimeoutException {
     syncIDs();
+    
+    fireConnected();
   }
-  
-  private Map<String, NetworkedObject> objects;
-  private Map<Short, NetworkedObject> index;
-  private boolean synced;
-  
-  private Packet[] history;
-  private byte current;
   
   private void generateIDs() {
     short curid = 1;
@@ -201,6 +203,8 @@ public abstract class NetworkManager extends RegisteredObject {
   }
   
   private void syncIDs() throws TimeoutException {
+    if(!isConnected() || !isClient() || objects.isEmpty()) return;
+    
     index.clear();
 
     for(NetworkedObject obj : objects.values()) {
@@ -260,11 +264,11 @@ public abstract class NetworkManager extends RegisteredObject {
   }
   
   private void receiveSyncResponse(Packet pack) {
-    NetworkedObject obj = null;
-    String name = null;
+    NetworkedObject obj;
+    String oname;
     try {
-      name = new String(pack.data, 3, pack.data.length - 3, NETWORK_CHARSET);
-      obj = objects.get(name);
+      oname = new String(pack.data, 3, pack.data.length - 3, NETWORK_CHARSET);
+      obj = objects.get(oname);
     } catch (UnsupportedEncodingException ex) { 
       log.log(Level.SEVERE, ENCODING_ERR, ex);
       
@@ -274,26 +278,25 @@ public abstract class NetworkManager extends RegisteredObject {
     short id = ByteUtils.toShort(pack.data, 1);
     
     index.put(id, obj);
+    obj.id = id;
     
     log.log(Level.FINE, ID_ASSIGNED, new Object[] {obj.getFullName(), id});
-    
-    obj.connected();
     
     synced = index.size() == objects.size();
     if(synced) synchronized(this) {this.notifyAll();}
   }
   
   private void receiveSyncRequest(Packet pack) {
-    String name;
+    String oname;
     try {
-      name = new String(pack.data, 1, pack.data.length - 1, NETWORK_CHARSET);
+      oname = new String(pack.data, 1, pack.data.length - 1, NETWORK_CHARSET);
     } catch (UnsupportedEncodingException ex) {
       log.log(Level.SEVERE, ENCODING_ERR, ex);
       
       return;
     }
     
-    short id = objects.get(name).id;
+    short id = objects.get(oname).id;
     
     Packet response = new Packet();
     
@@ -310,6 +313,18 @@ public abstract class NetworkManager extends RegisteredObject {
     sendPacket(pack.source, response);
   }
   
+  private void fireConnected() {
+    for(NetworkedObject obj : objects.values())
+      obj.connected();
+  }
+  
+  private final Map<String, NetworkedObject> objects;
+  private final Map<Short, NetworkedObject> index;
+  private boolean synced;
+  
+  private final Packet[] history;
+  private byte current;
+  
   // id for a sync request, this packet has a single string encoded as bytes.
   private static final byte SYNC_REQ = 0;
   //id for a sync response, this has an short id followed by a single string.
@@ -323,6 +338,7 @@ public abstract class NetworkManager extends RegisteredObject {
   private static final String ID_ASSIGNED = locprefix + ".id_assigned";
   private static final String IDS_SYNCHRONIZED = locprefix + ".ids_synchronized";
   private static final String SYNC_TIMEOUT_EX = locprefix + ".sync_timeout_ex";
+  private static final String UNKNOWN_PACKET_ID = locprefix + ".unknown_packet_id";
   
   private static final Logger log = Logger.getLogger(locprefix, 
     System.getProperty("taiga.code.logging.text"));

@@ -8,13 +8,19 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.lwjgl.opengl.GL11;
 import taiga.code.graphics.Camera;
 import taiga.code.graphics.Renderable;
+import taiga.code.registration.RegisteredObject;
+import taiga.gpvm.HardcodedValues;
 import taiga.gpvm.util.geom.Coordinate;
 import taiga.gpvm.map.Region;
 import taiga.gpvm.map.World;
 import taiga.gpvm.map.WorldListener;
+import taiga.gpvm.registry.SkyEntry;
+import taiga.gpvm.registry.SkyRegistry;
 import taiga.gpvm.schedule.WorldChange;
 import taiga.gpvm.schedule.WorldChangeListener;
 
@@ -36,6 +42,8 @@ public final class WorldRenderer extends Renderable implements WorldListener, Wo
     renderers = new HashMap<>();
     
     world.addListener(this);
+    for(Region reg : world.getRegions())
+      regionLoaded(reg);
   }
   
   public void setCamera(Camera cam) {
@@ -46,7 +54,32 @@ public final class WorldRenderer extends Renderable implements WorldListener, Wo
   
   private World map;
   private Map<Coordinate, RegionRenderer> renderers;
-  private Camera camera;
+  private volatile Camera camera;
+  
+  @Override
+  protected void attached(RegisteredObject parent) {
+    SkyRegistry skies = getObject(HardcodedValues.SKY_REGISTRY_NAME);
+    
+    if(skies == null) {
+      log.log(Level.WARNING, NO_SKY_REGISTRY);
+      return;
+    }
+    
+    SkyEntry entry = skies.getEntry(name);
+    if(entry == null) {
+      log.log(Level.WARNING, NO_SKY_FOUND, name);
+      return;
+    }
+    
+    try {
+      SkyBoxRenderer rend = entry.getRenderer();
+      addChild(rend);
+      
+      log.log(Level.FINE, SKY_ADDED, new Object[] {rend, name});
+    } catch(ReflectiveOperationException ex) {
+      log.log(Level.WARNING, SKY_CREATION_EX, ex);
+    }
+  }
 
   @Override
   protected void updateSelf() {
@@ -92,4 +125,14 @@ public final class WorldRenderer extends Renderable implements WorldListener, Wo
     RegionRenderer reg = renderers.get(change.location.getRegionCoordinate());
     reg.updateTile(change.location);
   }
+  
+  private static final String locprefix = WorldRenderer.class.getName().toLowerCase();
+  
+  private static final String NO_SKY_REGISTRY = locprefix + ".no_sky_registry";
+  private static final String NO_SKY_FOUND = locprefix + ".no_sky_found";
+  private static final String SKY_ADDED = locprefix + ".sky_added";
+  private static final String SKY_CREATION_EX = locprefix + ".sky_creation_ex";
+  
+  private static final Logger log = Logger.getLogger(locprefix,
+    System.getProperty("taiga.code.logging.text"));
 }

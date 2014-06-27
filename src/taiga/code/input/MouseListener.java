@@ -4,12 +4,12 @@
  * and open the template in the editor.
  */
 
-package taiga.gpvm.registry;
+package taiga.code.input;
 
 /**
  *
  * @author russell
  */
-public class MapRegistry {
+public interface MouseListener {
   
 }

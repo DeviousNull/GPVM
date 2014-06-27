@@ -6,21 +6,23 @@
 
 package taiga.gpvm.registry;
 
-import taiga.gpvm.map.Tile;
+import java.util.logging.Logger;
+import taiga.gpvm.entity.Entity;
 
 /**
- * Contains the data for a tile of a given type.
+ * Contains the definitions for a type of {@link Entity}.
  * 
  * @author russell
  */
-public class TileEntry extends RegistryEntry {
+public class EntityEntry extends RegistryEntry {
   
   /**
-   * The name of the mod that added this tile.
+   * The name of the mod that added this {@link Entity}.
    */
   public final String modname;
+  
   /**
-   * The name of the tile within the name space of the mod.  The get name method
+   * The name of the {@link Entity} within the name space of the mod.  The get name method
    * will return the name prepended with the modname and separated by a '.'.
    */
   public final String name;
@@ -29,28 +31,17 @@ public class TileEntry extends RegistryEntry {
    * Whether the tile is opaque.  This should only be true if the tile completely
    * covers the side of any adjacent tile.
    */
-  public final boolean opaque;
-  
-  /**
-   * Whether the tile is a solid cube.  This should only be true if the tile
-   * prevents entities from entering its area.
-   */
-  public final boolean solid;
 
   /**
-   * Creates a new {@link TileEntry} with the given information.
+   * Creates a new {@link EntityEntry} with the given information.
    * 
-   * @param modname The name of the {@link Mod} that this {@link TileEntry} is from.
-   * @param name The internal name for this {@link TileEntry}.
-   * @param opaque Whether {@link Tile}s behind this one are at least partially visible.
-   * @param solid Whether entities can pass through {@link Tile}s using this {@link TileEntry}.
+   * @param modname The name of the {@link Mod} that this {@link EntityEntry} is from.
+   * @param name The internal name for this {@link EntityEntry}.
    */
-  public TileEntry(String modname, String name, boolean opaque, boolean solid) {
+  public EntityEntry(String modname, String name) {
     super(modname + "." + name);
     this.modname = modname;
     this.name = name;
-    this.opaque = opaque;
-    this.solid = solid;
   }
 
   /**
@@ -66,5 +57,10 @@ public class TileEntry extends RegistryEntry {
     builder.append(name);
     
     return builder.toString();
-  } 
+  }
+
+  private static final String locprefix = EntityEntry.class.getName().toLowerCase();
+
+  private static final Logger log = Logger.getLogger(locprefix,
+    System.getProperty("taiga.code.logging.text"));
 }

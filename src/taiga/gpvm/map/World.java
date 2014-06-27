@@ -2,17 +2,19 @@ package taiga.gpvm.map;
 
 import taiga.gpvm.util.geom.Coordinate;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import taiga.code.networking.NetworkedObject;
 import taiga.code.networking.Packet;
 import taiga.code.registration.RegisteredObject;
+import taiga.code.registration.ReusableObject;
+import taiga.code.util.ByteUtils;
 import taiga.gpvm.HardcodedValues;
 import taiga.gpvm.util.geom.Direction;
 
@@ -22,7 +24,7 @@ import taiga.gpvm.util.geom.Direction;
  * 
  * @author russell
  */
-public final class World extends NetworkedObject {
+public final class World extends ReusableObject {
   
   /**
    * Creates a new {@link World} with the given name.
@@ -32,7 +34,7 @@ public final class World extends NetworkedObject {
   public World(String name) {
     super(name);
     
-    listeners = new ArrayList<>();
+    listeners = new HashSet<>();
     regions = new HashMap<>();
     regionlock = new ReentrantReadWriteLock();
   }
@@ -47,6 +49,10 @@ public final class World extends NetworkedObject {
   public Region getRegion(Coordinate coor) {
     Coordinate rc = coor.getRegionCoordinate();
     return regions.get(rc);
+  }
+  
+  public Collection<Region> getRegions() {
+    return Collections.unmodifiableCollection(regions.values());
   }
   
   /**
@@ -114,7 +120,7 @@ public final class World extends NetworkedObject {
    * @param list The {@link WorldListener} to add.
    */
   public void addListener(WorldListener list) {
-    listeners.add(new WeakReference<>(list));
+    listeners.add(list);
   }
   
   /**
@@ -122,11 +128,7 @@ public final class World extends NetworkedObject {
    * @param list The {@link WorldListener} to remove.
    */
   public void removeListener(WorldListener list) {
-    for(WeakReference<WorldListener> listener : listeners)
-      if(listener.get() == list) {
-        listeners.remove(listener);
-        return;
-      }
+    listeners.remove(list);
   }
   
   /**
@@ -138,9 +140,7 @@ public final class World extends NetworkedObject {
     coor = coor.getRegionCoordinate();
     if(isLoaded(coor)) return;
     
-    if(getNetworkManager() == null ||
-      (getNetworkManager().isServer() ||
-      !getNetworkManager().isConnected())) {
+    if(isServer()) {
       //try loading from a file first.
       if(loadRegionFile(coor)) {
         log.log(Level.FINE, REGION_FILE_LOADED, new Object[]{getFullName(), coor});
@@ -187,59 +187,76 @@ public final class World extends NetworkedObject {
     }
   }
   
+  /**
+   * Returns the id for this {@link World}.  This id is intended for network usage
+   * and may change as a result of network activity.
+   * 
+   * @return The current id for this {@link World}.
+   */
+  public short getWorldID() {
+    return worldid;
+  }
+  
   protected WorldMutator mutator;
 
   @Override
-  protected void connected() {
-  }
-
-  @Override
-  protected void messageRecieved(Packet pack) {
-  }
-
-  @Override
-  protected void managerAttached() {
+  protected void resetObject() {
+    try {
+      regionlock.writeLock().lock();
+      
+      regions.clear();
+      listeners.clear();
+    } finally {
+      regionlock.writeLock().unlock();
+    }
   }
   
-  private List<WeakReference<WorldListener>> listeners;
+  protected void setID(short id) {
+    worldid = id;
+  }
   
   private boolean loadRegionFile(Coordinate coor) {
     return false;
   }
 
   private void sendRegionRequest(Coordinate coor) {
+    Packet pack = new Packet();
     
+    pack.data = new byte[15];
+    pack.data[0] = Universe.Comms.REG_REQ;
+    
+    ByteUtils.toBytes(coor.x, 1, pack.data);
+    ByteUtils.toBytes(coor.y, 5, pack.data);
+    ByteUtils.toBytes(coor.z, 9, pack.data);
+    ByteUtils.toBytes(getWorldID(), 13, pack.data);
+    
+    Universe.Comms comms = getObject(HardcodedValues.COMMS_NAME);
+    comms.sendMessage(pack);
+  }
+
+  private boolean isServer() {
+    Universe.Comms comms = getObject(HardcodedValues.COMMS_NAME);
+    
+    return comms == null || 
+      comms.getNetworkManager() == null ||
+      !comms.getNetworkManager().isConnected() ||
+      comms.getNetworkManager().isServer();
   }
   
   private void fireRegionLoaded(Region reg) {
-    for(WeakReference<WorldListener> ref : listeners) {
-      WorldListener list = ref.get();
-      
-      if(list != null) {
-        list.regionLoaded(reg);
-      } else {
-        listeners.remove(ref);
-      }
-    }
+    for(WorldListener list : listeners)
+      list.regionLoaded(reg);
   }
   
-  private void fireRegionUnoaded(Region reg) {
-    for(WeakReference<WorldListener> ref : listeners) {
-      WorldListener list = ref.get();
-      
-      if(list != null) {
-        list.regionUnloaded(reg);
-      } else {
-        listeners.remove(ref);
-      }
-    }
+  private void fireRegionUnloaded(Region reg) {
+    for(WorldListener list : listeners)
+      list.regionUnloaded(reg);
   }
   
-  private Map<Coordinate, Region> regions;
-  private ReadWriteLock regionlock;
-  
-  //packet id for request for region data.  A single encoded coordainte is sent in the packet.
-  private static byte REG_REQ = 0;
+  private final Map<Coordinate, Region> regions;
+  private final ReadWriteLock regionlock;
+  private final Collection<WorldListener> listeners;
+  private short worldid;
   
   private static final String locprefix = World.class.getName().toLowerCase();
   
